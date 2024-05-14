@@ -1,66 +1,155 @@
 import React, { useState, useEffect } from "react";
-import {
-  StyleSheet,
-  Text,
-  View,
-  Animated,
-  ImageBackground,
-  TextInput,
-  Button,
-  Image,
-} from "react-native";
 import { createDrawerNavigator } from "@react-navigation/drawer";
-import { MaterialCommunityIcons, FontAwesome } from "@expo/vector-icons"; // Import MaterialCommunityIcons
-import SetUserDetails from "./setuserdetails";
+import { FontAwesome } from "@expo/vector-icons";
 import UpdateUserDetails from "./updateuserdetails";
-import NewPassword from "./newpassword";
-import GeneratePassword from "./generatepassword";
+import StoreNewPasswordScreen from "./newpassword";
+import DisplayPasswordInfo from './DisplayPasswordInfo';
+import { StyleSheet, Text, View, Button, ImageBackground } from "react-native";
+import LoginScreen from "./LoginScreen";
+import GeneratePasswordScreen from "./generatepassword";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
 
 const Drawer = createDrawerNavigator();
 
-const SplashScreen = () => {
-  const [fadeAnim] = useState(new Animated.Value(0)); // Initial value for opacity: 0
+const Index = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState("");
+  const route = useRoute();
+  const navigation = useNavigation();
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 3000, // Adjust duration as needed
-      useNativeDriver: true,
-    }).start();
+    checkLoginStatus();
   }, []);
 
-  return (
-    <View style={styles.container}>
-      <Animated.Image
-        source={require("./images/klipartz.com.png")}
-        style={[styles.logo, { opacity: fadeAnim }]}
-      />
-    </View>
-  );
-};
+  useEffect(() => {
+    if (route.params?.refresh) {
+      console.log("Refreshing home screen...");
+    }
+  }, [route.params?.refresh]);
 
-const Index = ({ navigation }) => {
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-
-  const handleLogin = () => {
-    // Check if the password is entered correctly
-    if (password === "correct_password") {
-      // Navigate to the "View all Passwords" screen
-      // You need to implement the navigation logic here
-      alert("Password entered correctly!");
-    } else {
-      alert("Incorrect password. Please try again.");
+  const checkLoginStatus = async () => {
+    try {
+      const storedUsername = await AsyncStorage.getItem("username");
+      setIsLoggedIn(!!storedUsername);
+      setUsername(storedUsername || "");
+    } catch (error) {
+      console.error("Error checking login status: ", error);
     }
   };
 
-  const handleCreateAccount = () => {
-    // Navigate to the "SetUserDetails" screen
-    navigation.navigate("SetUserDetails");
+  const handleLoginSuccess = (username) => {
+    setIsLoggedIn(true);
+    setUsername(username);
   };
 
-  const toggleShowPassword = () => {
-    setShowPassword(!showPassword);
+  const refreshHomeScreen = async () => {
+    console.log("Refreshing home screen...");
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      refreshHomeScreen();
+    }, [])
+  );
+
+  return (
+    <>
+      {isLoggedIn ? (
+        <Drawer.Navigator>
+          <Drawer.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{
+              drawerIcon: ({ color, size }) => (
+                <FontAwesome name="home" size={size} color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="UpdateUserDetails"
+            component={() => (
+              <UpdateUserDetails
+                onUsernameUpdate={(username) => {
+                  handleUsernameUpdate(username);
+                  navigation.navigate("Home", { refresh: true });
+                }}
+                onPasswordUpdate={(password) => {
+                  handlePasswordUpdate(password);
+                  navigation.navigate("Home", { refresh: true });
+                }}
+              />
+            )}
+            options={{
+              drawerIcon: ({ color, size }) => (
+                <FontAwesome name="edit" size={size} color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="GeneratePassword"
+            component={GeneratePasswordScreen}
+            options={{
+              drawerIcon: ({ color, size }) => (
+                <FontAwesome name="lock" size={size} color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="StoreNewPassword"
+            component={StoreNewPasswordScreen}
+            options={{
+              drawerIcon: ({ color, size }) => (
+                <FontAwesome name="lock" size={size} color={color} />
+              ),
+            }}
+          />
+          <Drawer.Screen
+            name="DisplayPasswordInfo"
+            component={DisplayPasswordInfo}
+            options={{
+              drawerIcon: ({ color, size }) => (
+                <FontAwesome name="lock" size={size} color={color} />
+              ),
+            }}
+          />
+        </Drawer.Navigator>
+      ) : (
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      )}
+    </>
+  );
+};
+
+const HomeScreen = ({ navigation }) => {
+  const [username, setUsername] = useState("");
+
+  useEffect(() => {
+    getUsername();
+  }, []);
+
+  const getUsername = async () => {
+    try {
+      const storedUsername = await AsyncStorage.getItem("username");
+      if (storedUsername !== null) {
+        setUsername(storedUsername);
+      } else {
+        console.log("Username not found in AsyncStorage");
+      }
+    } catch (error) {
+      console.error("Error retrieving username: ", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem("username");
+      await AsyncStorage.removeItem("password");
+      navigation.navigate("Login");
+    } catch (error) {
+      console.error("Error logging out: ", error);
+    }
   };
 
   return (
@@ -69,40 +158,23 @@ const Index = ({ navigation }) => {
         uri: "https://i.pinimg.com/736x/9e/c7/3f/9ec73f867df6f04a674a27b33780a4a2.jpg",
       }}
       resizeMode="cover"
-      style={styles.container}
+      style={styles.background}
     >
-      <View style={styles.overlay}>
-        <Text style={[styles.appName, styles.whiteText]}>Pass Guard</Text>
-        <Image
-          source={require("./images/klipartz.com.png")}
-          style={styles.logo}
-        />
-        <Text style={[styles.welcomeText, styles.whiteText]}>Welcome User</Text>
-        <View style={styles.passwordContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={(text) => setPassword(text)}
-            placeholderTextColor="white"
-          />
-          <MaterialCommunityIcons
-            name={showPassword ? "eye-off" : "eye"}
-            size={24}
-            color="white"
-            style={styles.icon}
-            onPress={toggleShowPassword}
-          />
+      <View style={styles.container}>
+        <Text style={styles.welcome}>Welcome, {username}!</Text>
+        <Text style={styles.info}>
+          You are logged in to your account. You can manage your account details
+          and passwords from the drawer menu.
+        </Text>
+        <View style={styles.buttonContainer}>
+          <Button title="Logout" onPress={handleLogout} />
         </View>
-        <Button title="OK" onPress={handleLogin} />
-        <View style={styles.footer}>
-          <Text style={styles.whiteText}>Enter password or </Text>
-          <Text
-            style={[styles.link, styles.whiteText]}
-            onPress={handleCreateAccount}
-          >
-            Create Account
+        <View style={styles.additionalInfo}>
+          <Text style={styles.additionalInfoText}>
+            Explore the options in the sidebar to manage your account.
+          </Text>
+          <Text style={styles.additionalInfoText}>
+            Click on "Generate Password" to create secure passwords.
           </Text>
         </View>
       </View>
@@ -110,129 +182,40 @@ const Index = ({ navigation }) => {
   );
 };
 
-const App = () => {
-  const [isSplashVisible, setIsSplashVisible] = useState(true);
-
-  useEffect(() => {
-    setTimeout(() => {
-      setIsSplashVisible(false);
-    }, 3000); // Adjust duration as needed
-  }, []);
-
-  return (
-    <View style={{ flex: 1 }}>
-      {isSplashVisible ? (
-        <SplashScreen />
-      ) : (
-        <Drawer.Navigator>
-          <Drawer.Screen
-            name="Home"
-            component={Index}
-            options={{
-              drawerIcon: ({ focused, color, size }) => (
-                <FontAwesome name="home" size={size} color={color} />
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Update Account"
-            component={UpdateUserDetails}
-            options={{
-              drawerIcon: ({ focused, color, size }) => (
-                <MaterialCommunityIcons
-                  name="account-edit"
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Store Password"
-            component={NewPassword}
-            options={{
-              drawerIcon: ({ focused, color, size }) => (
-                <MaterialCommunityIcons name="key" size={size} color={color} />
-              ),
-            }}
-          />
-          <Drawer.Screen
-            name="Create Password"
-            component={GeneratePassword}
-            options={{
-              drawerIcon: ({ focused, color, size }) => (
-                <MaterialCommunityIcons
-                  name="lock-plus"
-                  size={size}
-                  color={color}
-                />
-              ),
-            }}
-          />
-        </Drawer.Navigator>
-      )}
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#000", // Black background
-  },
-  overlay: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "center",
+    padding: 20,
     alignItems: "center",
   },
-  appName: {
-    fontSize: 30,
+  welcome: {
+    fontSize: 24,
+    marginBottom: 20,
+    color: "#fff",
+  },
+  info: {
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+    color: "#fff",
+  },
+  buttonContainer: {
+    width: "60%",
+    marginBottom: 20,
+  },
+  additionalInfo: {
+    alignItems: "center",
+  },
+  additionalInfoText: {
+    fontSize: 14,
+    color: "#fff",
     marginBottom: 10,
-  },
-  welcomeText: {
-    fontSize: 20,
-    marginBottom: 20,
-  },
-  passwordContainer: {
-    position: "relative",
-    width: "80%", // Adjust width to your preference
-    marginBottom: 20,
-  },
-  input: {
-    width: "100%",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 5,
-    padding: 10,
-    color: "white",
-  },
-  icon: {
-    position: "absolute",
-    right: 10, // Adjust position as needed
-    top: "50%",
-    transform: [{ translateY: -12 }], // Center vertically
-  },
-  footer: {
-    marginTop: 20,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  link: {
-    color: "blue",
-    textDecorationLine: "underline",
-  },
-  whiteText: {
-    color: "white",
-  },
-  logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
   },
 });
 
-export default App;
+export default Index;
+

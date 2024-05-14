@@ -1,3 +1,4 @@
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,28 +8,54 @@ import {
   Button,
   Alert,
 } from "react-native";
-import React, { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useNavigation } from "@react-navigation/native";
 
-const UpdateUserDetails = () => {
+const UpdateUserDetails = ({ onUsernameUpdate, onPasswordUpdate }) => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [updateType, setUpdateType] = useState("username");
+  const navigation = useNavigation();
 
   const saveDetails = async () => {
+    console.log("Saving details...");
     try {
-      // Overwrite existing name and password with new ones
-      await AsyncStorage.setItem("name", name);
-      await AsyncStorage.setItem("password", password);
-      // Notify the user that the information has been saved
-      Alert.alert("Success", "Your information has been saved.");
+      if (!(name || password)) {
+        Alert.alert(
+          "Error",
+          "Please provide either name or password to update."
+        );
+        return;
+      }
+
+      if (updateType === "username" && name) {
+        await AsyncStorage.setItem("username", name);
+        Alert.alert(
+          "Success",
+          "Your username has been updated successfully.",
+          [{ text: "OK", onPress: () => onUsernameUpdate(name) }] 
+        );
+      }
+
+      if (updateType === "password" && password) {
+        await AsyncStorage.setItem("password", password);
+        Alert.alert(
+          "Success",
+          "Your password has been updated successfully.",
+          [{ text: "OK", onPress: () => onPasswordUpdate(password) }] 
+        );
+      }
+
+      
+      navigation.navigate("Home", { refresh: true });
     } catch (error) {
       console.error("Error saving data: ", error);
-      Alert.alert("Error", "Failed to save information.");
+      Alert.alert("Error", "Failed to update information.");
     }
   };
 
   const resetFields = () => {
-    // Clear input fields
+    console.log("Resetting fields...");
     setName("");
     setPassword("");
   };
@@ -36,36 +63,53 @@ const UpdateUserDetails = () => {
   return (
     <ImageBackground
       source={{
-        uri: "https://i.pinimg.com/736x/9e/c7/3f/9ec73f867df6f04a674a27b33780a4a2.jpg",
+        uri:
+          "https://i.pinimg.com/736x/9e/c7/3f/9ec73f867df6f04a674a27b33780a4a2.jpg",
       }}
       resizeMode="cover"
       style={styles.container}
     >
       <View style={styles.overlay}>
         <Text style={[styles.pageTitle, styles.whiteText]}>Update User</Text>
-        <Text style={[styles.text, styles.whiteText]}>Enter your name:</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Name"
-          value={name}
-          onChangeText={(val) => setName(val)}
-          placeholderTextColor="white"
-        />
         <Text style={[styles.text, styles.whiteText]}>
-          Enter your password:
+          Choose what you want to update:
         </Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={(val) => setPassword(val)}
-          secureTextEntry={true}
-          placeholderTextColor="white"
-        />
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Update Username"
+            onPress={() => setUpdateType("username")}
+          />
+          <Button
+            title="Update Password"
+            onPress={() => setUpdateType("password")}
+          />
+        </View>
+        {updateType === "username" ? (
+          <TextInput
+            style={styles.input}
+            placeholder="New Username"
+            value={name}
+            onChangeText={(val) => setName(val)}
+            placeholderTextColor="white"
+          />
+        ) : (
+          <TextInput
+            style={styles.input}
+            placeholder="New Password"
+            value={password}
+            onChangeText={(val) => setPassword(val)}
+            secureTextEntry={true}
+            placeholderTextColor="white"
+          />
+        )}
         <View style={styles.buttonContainer}>
           <Button title="Reset" onPress={resetFields} />
           <Button title="Save" onPress={saveDetails} />
         </View>
+        <Text style={[styles.text, styles.whiteText]}>
+          Note: You can update either your username or password, not both at
+          once.
+        </Text>
       </View>
     </ImageBackground>
   );
@@ -89,11 +133,12 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 30,
     fontWeight: "bold",
-    marginBottom: 100,
+    marginBottom: 20,
   },
   text: {
-    fontSize: 20,
+    fontSize: 16,
     marginBottom: 10,
+    textAlign: "center",
   },
   input: {
     width: "80%",
@@ -103,12 +148,13 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 20,
     color: "white",
-    backgroundColor: "rgba(255, 255, 255, 0.2)", // Opaque background color
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
   },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    width: "40%",
+    width: "80%",
+    marginBottom: 20,
   },
   whiteText: {
     color: "white",
